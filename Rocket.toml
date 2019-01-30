@@ -1,5 +1,7 @@
 [development]
 template_dir = "templates/"
+port = 80
 
 [production]
 template_dir = "templates/"
+port = 80
