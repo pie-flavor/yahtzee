@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Yahtzee</title>
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+<h2>Dice</h2>
+<form method="post" action="/roll">
+    <table>
+        <tr>
+            {{#each dice}}
+                <th>{{this.value}}</th>
+            {{/each}}
+        </tr>
+        <tr>
+            {{#each dice}}
+                <th>
+                    <label>
+                        Hold die {{inc @index}}
+                        <br/>
+                        <input type="checkbox" name="die{{inc @index}}" value="true"
+                               {{#if this.held}}checked="checked"{{/if}}>
+                    </label>
+                </th>
+            {{/each}}
+        </tr>
+    </table>
+    <input type="submit"
+           {{#unless rolls_remaining}}disabled="disabled"{{/unless}}
+           value="Roll ({{rolls_remaining}} remaining)"/>
+</form>
+<h2>Scorecard</h2>
+<table>
+    <tr><th>Category</th><th>Score</th></tr>
+    {{#each scores}}
+        <tr>
+            <td>{{this.kind}}</td>
+            <td>{{this.value}}</td>
+            <td>
+                {{#if this.markable}}
+                    <form action="/mark/{{@index}}" method="post">
+                        <input type="submit" value="Mark {{this.potential}}"/>
+                    </form>
+                {{/if}}
+            </td>
+        </tr>
+    {{/each}}
+    <tr><td>Total</td><td>{{total}}</td></tr>
+</table>
+
+</body>
+</html>

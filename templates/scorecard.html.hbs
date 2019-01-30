@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Yahtzee Scorecard</title>
+    <link rel="stylesheet" href="/static/index.css"/>
+</head>
+<body>
+<h2>Scorecard</h2>
+<table>
+    <tr><th>Category</th><th>Score</th></tr>
+    {{#each scores}}
+        <tr>
+            <td>{{this.kind}}</td>
+            <td>{{this.value}}</td>
+        </tr>
+    {{/each}}
+    <tr><td>Total</td><td>{{total}}</td></tr>
+</table>
+</body>
+</html>

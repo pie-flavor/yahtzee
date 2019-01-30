@@ -1,0 +1,16 @@
+[package]
+name = "yahtzee"
+version = "0.1.0"
+authors = ["Adam Spofford <pieflavor.mc@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = {version = "0.4.0", default-features = false}
+rocket_contrib = {version = "0.4.0", features = ["templates", "handlebars_templates"]}
+serde = "1.0"
+serde_derive = "1.0"
+uuid = {version = "0.7", features = ["v4"]}
+if_chain = "0.1"
+rand = "0.6"
+handlebars = "1.1"
+serde_json = "1.0"
