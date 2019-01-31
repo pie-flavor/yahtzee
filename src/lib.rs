@@ -33,14 +33,14 @@ use rocket_contrib::templates::Template;
 use rocket_contrib::json::Json;
 use uuid::Uuid;
 
-use self::models::{IndexTemplateArgs, IndexTemplateScore, RollForm, ScorecardTemplateArgs,
-                   ScorecardTemplateScore, ErrorTemplateArgs};
+use self::models::*;
 
 mod models;
 
 pub fn launch_server() {
     Rocket::ignite()
-        .mount("/", routes![index, roll, mark, scorecard, scorecard_json])
+        .mount("/", routes![index, roll, mark, scorecard, scorecard_json, submit,
+                delete])
         .register(catchers![e404, e500])
         .attach(Template::custom(|engines| {
             engines.handlebars.register_helper("inc", Box::new(inc));
@@ -125,32 +125,46 @@ fn index(mut cookies: Cookies, games: State<Mutex<GamesInProgress>>) -> Result<T
         if let Some(game) = games.games.get(&id);
         then {
             let values = &CardField::values();
-            let mut vec = Vec::with_capacity(values.len());
-            let mut total = 0_u16;
-            for card in values.iter() {
-                let score = game.fields.get(card).cloned();
-                let potential;
-                if let Some(x) = score {
-                    total += x as u16;
-                    potential = 0;
-                } else {
-                    let yahtzee_field = game.fields.get(&CardField::Yahtzee);
-                    potential = calculate_score(*card, game.dice,
-                            yahtzee_field.map(|x| *x != 0).unwrap_or(true));
+            if game.fields.keys().len() == 13 {
+                let mut vec = Vec::with_capacity(values.len());
+                let mut total = 0;
+                for card in values.iter() {
+                    let score = game.fields[card];
+                    total += score;
+                    vec.push(PostTemplateScore {
+                        kind: format!("{}", *card),
+                        value: score,
+                    });
                 }
-                vec.push(IndexTemplateScore {
-                    kind: format!("{}", card),
-                    value: score,
-                    markable: score.is_none() && game.rolls > 0,
-                    potential,
-                })
+                Ok(Template::render("post", PostTemplateArgs { scores: vec, total }))
+            } else {
+                let mut vec = Vec::with_capacity(values.len());
+                let mut total = 0;
+                for card in values.iter() {
+                    let score = game.fields.get(card).cloned();
+                    let potential;
+                    if let Some(x) = score {
+                        total += x;
+                        potential = 0;
+                    } else {
+                        let yahtzee_field = game.fields.get(&CardField::Yahtzee);
+                        potential = calculate_score(*card, game.dice,
+                                yahtzee_field.map(|x| *x != 0).unwrap_or(true));
+                    }
+                    vec.push(IndexTemplateScore {
+                        kind: format!("{}", card),
+                        value: score,
+                        markable: score.is_none() && game.rolls > 0,
+                        potential,
+                    })
+                }
+                Ok(Template::render("index", IndexTemplateArgs {
+                    scores: vec,
+                    total,
+                    dice: game.dice,
+                    rolls_remaining: 3 - game.rolls,
+                }))
             }
-            Ok(Template::render("index", IndexTemplateArgs {
-                scores: vec,
-                total,
-                dice: game.dice,
-                rolls_remaining: 3 - game.rolls,
-            }))
         } else {
             let values = CardField::values().iter().map(|x| IndexTemplateScore {
                 kind: format!("{}", x),
@@ -239,31 +253,70 @@ fn mark(cookies: Cookies, games: State<Mutex<GamesInProgress>>, index: usize)
                     yahtzee_field.map(|x| *x != 0).unwrap_or(true));
             game.fields.insert(*field, score);
             if game.fields.keys().len() == 13 {
-                let mut vec = Vec::with_capacity(13);
-                let mut total = 0;
-                for field in CardField::values().iter() {
-                    let score = game.fields[field];
-                    total += score;
-                    vec.push(ScorecardTemplateScore {
-                        kind: format!("{}", field),
-                        value: score,
-                    });
-                }
-                fs::create_dir("scorecards").ok();
-                let file = File::create("scorecards/".to_string() + &id.to_string() + ".json")
-                        .map_err(|_| Status::InternalServerError)?;
-                serde_json::to_writer(file, &ScorecardTemplateArgs {
-                    scores: vec,
-                    total,
-                }).map_err(|_| Status::InternalServerError)?;
-                games.games.remove(&id);
-                return Ok(Redirect::to("/scorecard/".to_string() + &id.to_string()));
+//                let mut vec = Vec::with_capacity(13);
+//                let mut total = 0;
+//                for field in CardField::values().iter() {
+//                    let score = game.fields[field];
+//                    total += score;
+//                    vec.push(ScorecardTemplateScore {
+//                        kind: format!("{}", field),
+//                        value: score,
+//                    });
+//                }
+//                fs::create_dir("scorecards").ok();
+//                let file = File::create("scorecards/".to_string() + &id.to_string() + ".json")
+//                        .map_err(|_| Status::InternalServerError)?;
+//                serde_json::to_writer(file, &ScorecardTemplateArgs {
+//                    scores: vec,
+//                    total,
+//                }).map_err(|_| Status::InternalServerError)?;
+//                games.games.remove(&id);
+//                return Ok(Redirect::to("/scorecard/".to_string() + &id.to_string()));
             } else {
                 game.rolls = 0;
             }
         }
     }
     Ok(Redirect::to("/"))
+}
+
+#[post("/submit", data = "<form>")]
+fn submit(cookies: Cookies, state: State<Mutex<GamesInProgress>>, form: LenientForm<SubmitForm>)
+        -> Result<Redirect, Status>
+{
+    let form = form.into_inner();
+    let games = &mut *state.lock().map_err(|_| Status::InternalServerError)?;
+    if_chain! {
+        if let Some(cookie) = cookies.get("id");
+        if let Ok(id) = Uuid::from_str(cookie.value());
+        if let Some(game) = games.games.get_mut(&id);
+        let values = CardField::values();
+        if game.fields.keys().len() == values.len();
+        then {
+            let mut vec = Vec::with_capacity(values.len());
+            let mut total = 0;
+            for field in CardField::values().iter() {
+                let score = game.fields[field];
+                total += score;
+                vec.push(ScorecardTemplateScore {
+                    kind: format!("{}", field),
+                    value: score,
+                });
+            }
+            fs::create_dir("scorecards").ok();
+            let file = File::create("scorecards/".to_string() + &id.to_string() + ".json")
+                    .map_err(|_| Status::InternalServerError)?;
+            serde_json::to_writer(file, &ScorecardTemplateArgs {
+                scores: vec,
+                total,
+                name: Some(form.name),
+            }).map_err(|_| Status::InternalServerError)?;
+            games.games.remove(&id);
+            Ok(Redirect::to("/scorecard/".to_string() + &id.to_string()))
+        } else {
+            Ok(Redirect::to("/"))
+        }
+    }
 }
 
 #[get("/scorecard/<uuid>")]
@@ -282,6 +335,14 @@ fn scorecard_json(uuid: UuidReq) -> Result<Json<ScorecardTemplateArgs>, Status> 
     let params = serde_json::from_reader(file)
         .map_err(|_| Status::InternalServerError)?;
     Ok(Json(params))
+}
+
+#[get("/delete")]
+fn delete(mut cookies: Cookies) -> Redirect {
+    if let Some(cookie) = cookies.get("id") {
+        cookies.remove(cookie.clone());
+    }
+    Redirect::to("/")
 }
 
 fn calculate_score(field: CardField, dice: [Die; 5], can_yahtzee: bool) -> u16 {
@@ -399,5 +460,5 @@ impl Deref for UuidReq {
 
 #[get("/static/<rest..>")]
 fn static_content(rest: PathBuf) -> Result<File, ()> {
-    Ok(File::open(rest).map_err(|_| ())?)
+    Ok(File::open(PathBuf::from("static").join(rest)).map_err(|_| ())?)
 }

@@ -26,6 +26,7 @@ pub struct RollForm {
 
 #[derive(Serialize, Deserialize)]
 pub struct ScorecardTemplateArgs {
+    pub name: Option<String>,
     pub scores: Vec<ScorecardTemplateScore>,
     pub total: u16,
 }
@@ -39,4 +40,21 @@ pub struct ScorecardTemplateScore {
 #[derive(Serialize)]
 pub struct ErrorTemplateArgs {
     pub errorcode: u16,
+}
+
+#[derive(Serialize)]
+pub struct PostTemplateArgs {
+    pub scores: Vec<PostTemplateScore>,
+    pub total: u16,
+}
+
+#[derive(Serialize)]
+pub struct PostTemplateScore {
+    pub kind: String,
+    pub value: u16,
+}
+
+#[derive(FromForm)]
+pub struct SubmitForm {
+    pub name: String,
 }

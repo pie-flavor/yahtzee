@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Yahtzee Scorecard</title>
+    <title>Submit Yahtzee Scorecard</title>
     <link rel="stylesheet" href="/static/index.css"/>
 </head>
 <body>
+<h2>Submit Scores</h2>
+<form action="/submit" method="post">
+    <label>Name: <input type="text" name="name"/></label>
+    <input type="submit" value="Submit"/>
+</form>
 <h2>Scorecard</h2>
-{{#if name}}
-    <p>Name: {{name}}</p>
-{{/if}}
 <table>
     <tr><th>Category</th><th>Score</th></tr>
     {{#each scores}}
@@ -19,5 +21,11 @@
     {{/each}}
     <tr><td>Total</td><td>{{total}}</td></tr>
 </table>
+<details>
+    <summary>Cancel</summary>
+    <form action="/delete">
+        <input type="submit" value="Cancel and reset"/>
+    </form>
+</details>
 </body>
 </html>
