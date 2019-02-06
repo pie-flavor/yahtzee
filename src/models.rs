@@ -1,3 +1,6 @@
+use serde_derive::{Serialize, Deserialize};
+use rocket::FromForm;
+
 #[derive(Serialize, Default)]
 pub struct IndexTemplateArgs {
     pub scores: Vec<IndexTemplateScore>,

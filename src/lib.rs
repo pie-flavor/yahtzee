@@ -1,20 +1,6 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #![recursion_limit="128"]
 
-#[macro_use]
-extern crate handlebars;
-#[macro_use]
-extern crate if_chain;
-extern crate rand;
-#[macro_use]
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate uuid;
-
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::fs::{self, File};
@@ -23,17 +9,19 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
 
+use handlebars::handlebars_helper;
+use if_chain::if_chain;
 use rand::Rng;
-use rocket::http::{Cookie, Cookies, Status, RawStr};
+use rocket::{catch, catchers, get, post, Rocket, routes, State};
+use rocket::http::{Cookie, Cookies, RawStr, Status};
 use rocket::request::{FromParam, LenientForm};
 use rocket::response::Redirect;
-use rocket::Rocket;
-use rocket::State;
-use rocket_contrib::templates::Template;
 use rocket_contrib::json::Json;
+use rocket_contrib::templates::Template;
+use serde_derive::Serialize;
 use uuid::Uuid;
 
-use self::models::*;
+use crate::models::*;
 
 mod models;
 
